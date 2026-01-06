@@ -178,3 +178,151 @@ export async function issueInvoice(invoiceId: string) {
   );
  return r.rows[0] ?? null; 
 }
+
+type ListInvoicesQuery = {
+  clientId?: string;
+  status?: string;
+  from?: string;
+  to?: string;
+  q?: string;
+  page?: string;
+  limit?: string;
+};
+
+export async function listInvoices(query: any) {
+  const q = query as ListInvoicesQuery;
+
+  const where: string[] = [];
+  const params: any[] = [];
+  let idx = 1;
+
+  if (q.clientId) {
+    where.push(`inv.client_id = $${idx++}`);
+    params.push(q.clientId);
+  }
+
+  if (q.status) {
+    where.push(`inv.status = $${idx++}`);
+    params.push(q.status);
+  }
+
+  if (q.from) {
+    where.push(`inv.issue_date >= $${idx++}::date`);
+    params.push(q.from);
+  }
+
+  if (q.to) {
+    where.push(`inv.issue_date <= $${idx++}::date`);
+    params.push(q.to);
+  }
+
+  if (q.q && q.q.trim()) {
+    where.push(`(inv.invoice_number ILIKE $${idx} OR c.name ILIKE $${idx})`);
+    params.push(`%${q.q.trim()}%`);
+    idx++;
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
+
+  const limit = Math.min(Math.max(Number(q.limit ?? 20), 1), 100);
+  const page = Math.max(Number(q.page ?? 1), 1);
+  const offset = (page - 1) * limit;
+
+  // total count
+  const countRes = await pool.query(
+    `
+    SELECT COUNT(*)::int AS total
+    FROM invoices inv
+    JOIN clients c ON c.id = inv.client_id
+    ${whereSql}
+    `,
+    params
+  );
+
+  // limit/offset placeholders derived from current params length
+  const limitParam = params.length + 1;
+  const offsetParam = params.length + 2;
+
+  const dataRes = await pool.query(
+    `
+    SELECT
+      inv.id,
+      inv.invoice_number,
+      inv.client_id,
+      c.name AS client_name,
+      inv.status,
+      inv.issue_date,
+      inv.due_date,
+      inv.currency,
+      inv.subtotal,
+      inv.tax_rate,
+      inv.tax_total,
+      inv.total,
+      inv.created_at,
+      inv.updated_at,
+      COALESCE(p.paid_total, 0) AS amount_paid,
+      GREATEST(inv.total - COALESCE(p.paid_total, 0), 0) AS amount_due
+    FROM invoices inv
+    JOIN clients c ON c.id = inv.client_id
+    LEFT JOIN (
+      SELECT invoice_id, COALESCE(SUM(amount),0) AS paid_total
+      FROM payments
+      GROUP BY invoice_id
+    ) p ON p.invoice_id = inv.id
+    ${whereSql}
+    ORDER BY inv.created_at DESC
+    LIMIT $${limitParam} OFFSET $${offsetParam}
+    `,
+    [...params, limit, offset]
+  );
+
+  return {
+    data: dataRes.rows,
+    meta: {
+      page,
+      limit,
+      total: countRes.rows[0]?.total ?? 0,
+    },
+  };
+}
+
+
+export async function listPaymentsForInvoice(invoiceId: string) {
+  const r = await pool.query(
+    `
+    SELECT *
+    FROM payments
+    WHERE invoice_id = $1
+    ORDER BY paid_at DESC, id DESC
+    `,
+    [invoiceId]
+  );
+  return r.rows;
+}
+
+export async function getClientForInvoice(invoiceId: string) {
+  const r = await pool.query(
+    `
+    SELECT c.*
+    FROM invoices i
+    JOIN clients c ON c.id = i.client_id
+    WHERE i.id = $1
+    `,
+    [invoiceId]
+  );
+  return r.rows[0] ?? null;
+}
+export async function getLatestPaymentForInvoice(invoiceId: string) {
+  const r = await pool.query(
+    `
+    SELECT id, receipt_number, paid_at
+    FROM payments
+    WHERE invoice_id = $1
+    ORDER BY paid_at DESC NULLS LAST, id DESC
+    LIMIT 1
+    `,
+    [invoiceId]
+  );
+
+  return r.rows[0] ?? null;
+}

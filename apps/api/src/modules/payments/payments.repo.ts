@@ -80,13 +80,16 @@ export async function createPaymentForInvoice(
     const paidAt = input.paid_at ?? null;
     const method = input.method ?? "cash";
     const note = input.note ?? null;
+    const receipt_number = await generateReceiptNumber(client, "RCT");
 
-    const payRes = await client.query(
-      `INSERT INTO payments (invoice_id, method, amount, paid_at, note)
-       VALUES ($1, $2, $3, COALESCE($4::timestamptz, now()), $5)
-       RETURNING *`,
-      [invoiceId, method, incomingAmount, paidAt, note]
-    );
+
+  const payRes = await client.query(
+  `INSERT INTO payments (invoice_id, method, amount, paid_at, note, receipt_number)
+   VALUES ($1, $2, $3, COALESCE($4::timestamptz, now()), $5, $6)
+   RETURNING *`,
+  [invoiceId, method, incomingAmount, paidAt, note, receipt_number]
+);
+
 
     const payment = payRes.rows[0];
 
@@ -123,12 +126,19 @@ export async function createPaymentForInvoice(
   }
 }
 
-export async function listPayments() {
-  const r = await pool.query(
-    `SELECT *
-     FROM payments
-     ORDER BY paid_at DESC, id DESC
-     LIMIT 100`
+async function generateReceiptNumber(client: any, prefix = "RCT") {
+  const year = new Date().getFullYear();
+
+  const r = await client.query(
+    `INSERT INTO receipt_counters(year, last_seq)
+     VALUES ($1, 1)
+     ON CONFLICT (year)
+     DO UPDATE SET last_seq = receipt_counters.last_seq + 1
+     RETURNING last_seq`,
+    [year]
   );
-  return r.rows;
+
+  const next = Number(r.rows[0].last_seq);
+  const seqStr = String(next).padStart(6, "0");
+  return `${prefix}-${year}-${seqStr}`;
 }

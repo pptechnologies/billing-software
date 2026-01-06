@@ -6,6 +6,7 @@ import errorHandler from "./middleware/error";
 import { pool } from './config/db';
 import invoiceRoutes from "./modules/invoices/invoices.route";
 import paymentRoutes from "./modules/payments/payments.routes";
+import reportsRouter from "./modules/reports/reports.routes";
 
 const app = express();
 
@@ -32,6 +33,7 @@ app.use(errorHandler);
 app.use("/invoices", invoiceRoutes);
 app.use("/clients", clientRoutes);
 app.use("/payments", paymentRoutes);
+app.use("/reports", reportsRouter);
 
 
 export default app;
