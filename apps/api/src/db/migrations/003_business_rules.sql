@@ -20,29 +20,28 @@ CREATE OR REPLACE FUNCTION prevent_invoice_edits_when_not_draft()
 RETURNS trigger AS $$
 BEGIN
   IF OLD.status <> 'draft' THEN
-    -- allow ONLY status + updated_at changes
-    IF (NEW.status IS DISTINCT FROM OLD.status) AND
-       (NEW.updated_at IS DISTINCT FROM OLD.updated_at) AND
-       (NEW.client_id IS NOT DISTINCT FROM OLD.client_id) AND
-       (NEW.invoice_number IS NOT DISTINCT FROM OLD.invoice_number) AND
-       (NEW.issue_date IS NOT DISTINCT FROM OLD.issue_date) AND
-       (NEW.due_date IS NOT DISTINCT FROM OLD.due_date) AND
-       (NEW.currency IS NOT DISTINCT FROM OLD.currency) AND
-       (NEW.notes IS NOT DISTINCT FROM OLD.notes) AND
-       (NEW.subtotal IS NOT DISTINCT FROM OLD.subtotal) AND
-       (NEW.tax_rate IS NOT DISTINCT FROM OLD.tax_rate) AND
-       (NEW.tax_total IS NOT DISTINCT FROM OLD.tax_total) AND
-       (NEW.total IS NOT DISTINCT FROM OLD.total)
+    -- block if any protected column changed
+    IF (NEW.client_id IS DISTINCT FROM OLD.client_id) OR
+       (NEW.invoice_number IS DISTINCT FROM OLD.invoice_number) OR
+       (NEW.issue_date IS DISTINCT FROM OLD.issue_date) OR
+       (NEW.due_date IS DISTINCT FROM OLD.due_date) OR
+       (NEW.currency IS DISTINCT FROM OLD.currency) OR
+       (NEW.notes IS DISTINCT FROM OLD.notes) OR
+       (NEW.subtotal IS DISTINCT FROM OLD.subtotal) OR
+       (NEW.tax_rate IS DISTINCT FROM OLD.tax_rate) OR
+       (NEW.tax_total IS DISTINCT FROM OLD.tax_total) OR
+       (NEW.total IS DISTINCT FROM OLD.total)
     THEN
-      RETURN NEW;
+      RAISE EXCEPTION 'Invoice % is not draft; edits are not allowed', OLD.id;
     END IF;
 
-    RAISE EXCEPTION 'Invoice % is not draft; edits are not allowed', OLD.id;
+    RETURN NEW;
   END IF;
 
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
 
 DROP TRIGGER IF EXISTS trg_prevent_invoice_edits ON invoices;
 CREATE TRIGGER trg_prevent_invoice_edits
