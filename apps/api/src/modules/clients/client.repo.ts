@@ -1,5 +1,6 @@
 import { pool } from "../../config/db";
 import type { CreateClientInput } from "./client.validation";
+import type { UpdateClientInput } from "./client.validation";
 
 export async function createClient(input: CreateClientInput) {
   const r = await pool.query(
@@ -31,4 +32,71 @@ export async function listClients() {
 export async function getClientById(id: string) {
   const r = await pool.query(`SELECT * FROM clients WHERE id=$1`, [id]);
   return r.rows[0] ?? null;
+}
+
+
+export async function updateClientById(id: string, input: UpdateClientInput) {
+  const keys = Object.keys(input) as (keyof UpdateClientInput)[];
+
+  if (keys.length === 0) {
+    throw Object.assign(new Error("No fields to update"), { status: 400, code: "NoFields" });
+  }
+
+  const set: string[] = [];
+  const params: any[] = [];
+  let i = 1;
+
+  for (const k of keys) {
+    set.push(`${k} = $${i++}`);
+    params.push((input as any)[k] ?? null);
+  }
+
+  // updated_at
+  set.push(`updated_at = now()`);
+
+  params.push(id);
+
+  const r = await pool.query(
+    `UPDATE clients
+     SET ${set.join(", ")}
+     WHERE id = $${i}
+     RETURNING *`,
+    params
+  );
+
+  return r.rows[0] ?? null;
+}
+
+export async function deleteClientById(id: string) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const exists = await client.query(`SELECT id FROM clients WHERE id=$1`, [id]);
+    if (!exists.rowCount) {
+      await client.query("ROLLBACK");
+      return { deleted: false, reason: "ClientNotFound" as const };
+    }
+
+    const invCount = await client.query(
+      `SELECT COUNT(*)::int AS count FROM invoices WHERE client_id=$1`,
+      [id]
+    );
+
+    const count = invCount.rows[0]?.count ?? 0;
+    if (count > 0) {
+      await client.query("ROLLBACK");
+      return { deleted: false, reason: "ClientHasInvoices" as const, invoices: count };
+    }
+
+    await client.query(`DELETE FROM clients WHERE id=$1`, [id]);
+
+    await client.query("COMMIT");
+    return { deleted: true as const };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 }
