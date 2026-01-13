@@ -8,6 +8,10 @@ const router = Router();
 router.post("/", controller.createClient);
 router.get("/", controller.listClients);
 router.get("/:id", controller.getClient);
+
+router.patch("/:id", controller.updateClient);
+router.delete("/:id", controller.deleteClient);
+
 router.get("/:id/invoices", listInvoicesForClient);
 
 
