@@ -12,6 +12,10 @@ router.get("/", controller.listInvoices);
 router.get("/:id/payments", controller.listInvoicePayments);
 router.get("/:id/pdf", controller.getInvoicePdf);
 router.get("/:id/receipt/pdf", controller.getInvoiceReceiptPdf);
+router.patch("/:id", controller.patchInvoice);
+router.put("/:id/items", controller.replaceInvoiceItems);
+router.delete("/:id", controller.deleteInvoice);
+
 
 
 
