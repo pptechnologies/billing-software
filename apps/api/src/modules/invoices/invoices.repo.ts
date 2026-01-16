@@ -1,6 +1,6 @@
 import { pool } from "../../config/db";
 import { computeInvoiceTotals, computeLineTotal } from "../../utils/money";
-import type { CreateInvoiceInput } from "./invoices.validation";
+import type { CreateInvoiceInput, PatchInvoiceInput, ReplaceInvoiceItemsInput } from "./invoices.validation";
 
 function yearPrefix(d: Date) {
   return d.getFullYear();
@@ -17,7 +17,9 @@ async function generateInvoiceNumber(client: any, prefix = "PP") {
     [year]
   );
 
-  const next = Number(r.rows[0].last_seq);
+  const next 
+  
+  = Number(r.rows[0].last_seq);
   const seqStr = String(next).padStart(6, "0");
   return `${prefix}-${year}-${seqStr}`;
 }
@@ -325,4 +327,165 @@ export async function getLatestPaymentForInvoice(invoiceId: string) {
   );
 
   return r.rows[0] ?? null;
+}
+
+
+// helper: fetch invoice status with lock
+export async function getInvoiceForUpdate(client: any, invoiceId: string) {
+  const r = await client.query(
+    `SELECT id, status, tax_rate, total
+     FROM invoices
+     WHERE id = $1
+     FOR UPDATE`,
+    [invoiceId]
+  );
+  return r.rows[0] ?? null;
+}
+
+export async function patchInvoice(invoiceId: string, input: PatchInvoiceInput) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const inv = await getInvoiceForUpdate(client, invoiceId);
+    if (!inv) throw Object.assign(new Error("Invoice not found"), { status: 404, code: "InvoiceNotFound" });
+    if (inv.status !== "draft") {
+      throw Object.assign(new Error("Invoice is not draft; edits are not allowed"), {
+        status: 409,
+        code: "InvoiceNotDraft",
+      });
+    }
+
+    const entries = Object.entries(input).filter(([, v]) => v !== undefined);
+    if (entries.length === 0) {
+      const cur = await client.query(`SELECT * FROM invoices WHERE id=$1`, [invoiceId]);
+      await client.query("COMMIT");
+      return cur.rows[0];
+    }
+
+    const sets: string[] = [];
+    const params: any[] = [];
+    let i = 1;
+
+    for (const [k, v] of entries) {
+      // normalize due_date: allow null to clear
+      sets.push(`${k} = $${i++}`);
+      params.push(v);
+    }
+
+    sets.push(`updated_at = now()`);
+    params.push(invoiceId);
+
+    const up = await client.query(
+      `UPDATE invoices
+       SET ${sets.join(", ")}
+       WHERE id = $${i}
+       RETURNING *`,
+      params
+    );
+
+    await client.query("COMMIT");
+    return up.rows[0];
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function replaceInvoiceItems(invoiceId: string, input: ReplaceInvoiceItemsInput) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const inv = await getInvoiceForUpdate(client, invoiceId);
+    if (!inv) throw Object.assign(new Error("Invoice not found"), { status: 404, code: "InvoiceNotFound" });
+    if (inv.status !== "draft") {
+      throw Object.assign(new Error("Invoice is not draft; edits are not allowed"), {
+        status: 409,
+        code: "InvoiceNotDraft",
+      });
+    }
+
+    // delete old items (draft-only enforced)
+    await client.query(`DELETE FROM invoice_items WHERE invoice_id=$1`, [invoiceId]);
+
+    // insert new items
+    const insertedItems: any[] = [];
+    for (let i = 0; i < input.items.length; i++) {
+      const it = input.items[i];
+      const line_total = computeLineTotal(it.qty, it.unit_price);
+
+      const itemRes = await client.query(
+        `INSERT INTO invoice_items (
+          invoice_id, product_id, description, qty, unit_price, line_total, sort_order
+        )
+        VALUES ($1,$2,$3,$4,$5,$6,$7)
+        RETURNING *`,
+        [
+          invoiceId,
+          it.product_id ?? null,
+          it.description,
+          it.qty,
+          it.unit_price,
+          line_total,
+          it.sort_order ?? i,
+        ]
+      );
+
+      insertedItems.push(itemRes.rows[0]);
+    }
+
+    // recompute invoice totals
+    const taxRate = Number(inv.tax_rate ?? 13.0);
+    const itemsForTotals = insertedItems.map((it) => ({
+      qty: Number(it.qty),
+      unit_price: Number(it.unit_price),
+    }));
+
+    const totals = computeInvoiceTotals(itemsForTotals, taxRate);
+
+    const upInv = await client.query(
+      `UPDATE invoices
+       SET subtotal=$2, tax_rate=$3, tax_total=$4, total=$5, updated_at=now()
+       WHERE id=$1
+       RETURNING *`,
+      [invoiceId, totals.subtotal, totals.tax_rate, totals.tax_total, totals.total]
+    );
+
+    await client.query("COMMIT");
+    return { invoice: upInv.rows[0], items: insertedItems };
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
+}
+
+export async function deleteInvoice(invoiceId: string) {
+  const client = await pool.connect();
+  try {
+    await client.query("BEGIN");
+
+    const inv = await getInvoiceForUpdate(client, invoiceId);
+    if (!inv) throw Object.assign(new Error("Invoice not found"), { status: 404, code: "InvoiceNotFound" });
+    if (inv.status !== "draft") {
+      throw Object.assign(new Error("Only draft invoices can be deleted"), {
+        status: 409,
+        code: "InvoiceNotDraft",
+      });
+    }
+
+    // invoice_items has ON DELETE CASCADE, so deleting invoice will delete items
+    await client.query(`DELETE FROM invoices WHERE id=$1`, [invoiceId]);
+
+    await client.query("COMMIT");
+  } catch (e) {
+    await client.query("ROLLBACK");
+    throw e;
+  } finally {
+    client.release();
+  }
 }

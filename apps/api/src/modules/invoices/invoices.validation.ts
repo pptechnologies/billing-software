@@ -19,3 +19,38 @@ client_id: z.uuid(),
 });
 
 export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
+
+// PATCH partial update
+export const patchInvoiceSchema = z
+  .object({
+    client_id: z.uuid().optional(),
+    issue_date: z.string().optional(), // YYYY-MM-DD
+    due_date: z.string().nullable().optional(),
+    currency: z.string().min(1).optional(),
+    notes: z.string().nullable().optional(),
+    tax_rate: z.number().min(0).max(100).optional(),
+    status: z.never().optional(), // block status changes here
+    invoice_number: z.never().optional(), // block invoice_number edits
+  })
+  .strict();
+
+export type PatchInvoiceInput = z.infer<typeof patchInvoiceSchema>;
+
+// PUT replace items
+export const replaceInvoiceItemsSchema = z
+  .object({
+    items: z
+      .array(
+        z.object({
+          product_id: z.uuid().nullable().optional(),
+          description: z.string().min(1),
+          qty: z.number().positive().default(1),
+          unit_price: z.number().min(0),
+          sort_order: z.number().int().optional(),
+        })
+      )
+      .min(1),
+  })
+  .strict();
+
+export type ReplaceInvoiceItemsInput = z.infer<typeof replaceInvoiceItemsSchema>;

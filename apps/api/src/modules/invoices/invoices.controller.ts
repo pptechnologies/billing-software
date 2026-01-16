@@ -1,5 +1,6 @@
 import type { Request, Response, NextFunction } from "express";
-import { createInvoiceSchema } from "./invoices.validation";
+import { createInvoiceSchema, patchInvoiceSchema, replaceInvoiceItemsSchema } from "./invoices.validation";
+
 import puppeteer from "puppeteer";
 import * as repo from "./invoices.repo";
 import { company } from "../../config/company";
@@ -279,3 +280,42 @@ export async function getInvoiceReceiptPdf(req: Request, res: Response, next: Ne
   }
 }
 
+export async function patchInvoice(req: Request, res: Response, next: NextFunction) {
+  try {
+    const invoiceId = req.params.id;
+    const parsed = patchInvoiceSchema.parse(req.body);
+
+    const updated = await repo.patchInvoice(invoiceId, parsed);
+    res.json({ invoice: updated });
+  } catch (err: any) {
+    if (err?.name === "ZodError") {
+      return res.status(400).json({ error: "ValidationError", details: err.errors });
+    }
+    next(err);
+  }
+}
+
+export async function replaceInvoiceItems(req: Request, res: Response, next: NextFunction) {
+  try {
+    const invoiceId = req.params.id;
+    const parsed = replaceInvoiceItemsSchema.parse(req.body);
+
+    const result = await repo.replaceInvoiceItems(invoiceId, parsed);
+    res.json(result); // {invoice, items}
+  } catch (err: any) {
+    if (err?.name === "ZodError") {
+      return res.status(400).json({ error: "ValidationError", details: err.errors });
+    }
+    next(err);
+  }
+}
+
+export async function deleteInvoice(req: Request, res: Response, next: NextFunction) {
+  try {
+    const invoiceId = req.params.id;
+    await repo.deleteInvoice(invoiceId);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+}
