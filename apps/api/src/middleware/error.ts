@@ -30,7 +30,7 @@ export default function errorHandler(
 
   const e = err as AppError;
 
-  // 2) Postgres errors (unique/foreign key/etc)
+  // 2) Postgres errors
   if (isPgError(e)) {
     // Common PG codes:
     // 23505 = unique_violation
@@ -79,7 +79,7 @@ export default function errorHandler(
     });
   }
 
-  // 3) Your custom thrown errors from repo/controller
+  //
   const status = Number.isFinite(e?.status) ? (e.status as number) : 500;
 
   const payload: any = {

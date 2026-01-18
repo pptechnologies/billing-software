@@ -51,7 +51,7 @@ export async function updateClientById(id: string, input: UpdateClientInput) {
     params.push((input as any)[k] ?? null);
   }
 
-  // updated_at
+
   set.push(`updated_at = now()`);
 
   params.push(id);
