@@ -26,6 +26,7 @@ export default function PaymentTracking() {
     count: 0,
   });
 
+  // Fetch invoices
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     try {
@@ -33,7 +34,8 @@ export default function PaymentTracking() {
       const json = await res.json();
       const invList = json.data || [];
 
-      const outstanding = invList.filter((inv) => inv.status === "issued" || inv.status === "partial");
+      // Only outstanding invoices (issued)
+      const outstanding = invList.filter((inv) => inv.status === "issued");
       setInvoices(outstanding);
 
       await fetchPayments(outstanding);
@@ -43,6 +45,7 @@ export default function PaymentTracking() {
     }
   }, []);
 
+  // Fetch payments for invoices
   const fetchPayments = async (invList) => {
     try {
       const allPayments = [];
@@ -50,27 +53,31 @@ export default function PaymentTracking() {
         const res = await fetch(`${API_BASE}/invoices/${inv.id}/payments`);
         if (!res.ok) continue;
         const json = await res.json();
-        const data = json.data || [];
+        const data = json.payments || [];
         data.forEach((p) =>
           allPayments.push({
             ...p,
             invoice_id: inv.id,
             invoice_number: inv.invoice_number,
             client_name: inv.client_name || inv.client || "N/A",
-            amount_due: Number(inv.summary?.amount_due ?? 0),
+            amount_due: Number(inv.amount_due ?? 0),
+            amount: Number(p.amount),
+            paid_at: p.paid_at,
           })
         );
       }
 
-      const received = allPayments.reduce((sum, p) => sum + Number(p.amount), 0);
+      setPayments(allPayments);
+
+      // Calculate totals
+      const received = allPayments.reduce((sum, p) => sum + p.amount, 0);
       const pending = invList.reduce((sum, inv) => {
         const paid = allPayments
           .filter((p) => p.invoice_id === inv.id)
-          .reduce((s, p) => s + Number(p.amount), 0);
-        return sum + Math.max(Number(inv.summary?.amount_due ?? 0) - paid, 0);
+          .reduce((s, p) => s + p.amount, 0);
+        return sum + Math.max(Number(inv.amount_due ?? 0) - paid, 0);
       }, 0);
 
-      setPayments(allPayments);
       setTotals({
         received: Number(received.toFixed(2)),
         pending: Number(pending.toFixed(2)),
@@ -85,19 +92,21 @@ export default function PaymentTracking() {
     fetchInvoices();
   }, [fetchInvoices]);
 
+  // Select an invoice from dropdown
   const handleInvoiceSelect = (id) => {
     const inv = invoices.find((i) => i.id === id);
     if (!inv) return;
 
     const invPayments = payments.filter((p) => p.invoice_id === id);
-    const paid = invPayments.reduce((sum, p) => sum + Number(p.amount), 0);
-    const due = Math.max(Number(inv.summary?.amount_due ?? 0) - paid, 0);
+    const paid = invPayments.reduce((sum, p) => sum + p.amount, 0);
+    const due = Math.max(Number(inv.amount_due ?? 0) - paid, 0);
 
     setSelectedInvoice({ ...inv, paid: Number(paid.toFixed(2)) });
     setRemainingDue(Number(due.toFixed(2)));
     setFormData({ ...formData, invoice_id: id, amount: due });
   };
 
+  // Submit payment
   const handlePaymentSubmit = async (e) => {
     e.preventDefault();
     if (!formData.invoice_id) return alert("Please select an invoice");
@@ -132,21 +141,21 @@ export default function PaymentTracking() {
     }
   };
 
-  // Table data with summary.amount_due
+  // Prepare table data
   const tableData = invoices.map((inv) => {
     const invPayments = payments.filter((p) => p.invoice_id === inv.id);
-    const paid = invPayments.reduce((s, p) => s + Number(p.amount), 0);
-    const remaining = Math.max(Number(inv.summary?.amount_due ?? 0) - paid, 0);
+    const paid = invPayments.reduce((s, p) => s + p.amount, 0);
+    const remaining = Math.max(Number(inv.amount_due ?? 0) - paid, 0);
     const lastPayment = invPayments.sort((a, b) => new Date(b.paid_at) - new Date(a.paid_at))[0];
 
     return {
       invoice_id: inv.id,
       invoice_number: inv.invoice_number,
       client_name: inv.client_name || inv.client || "N/A",
-      amount_due: Number(inv.summary?.amount_due ?? 0),
+      amount_due: Number(inv.amount_due ?? 0),
       paid,
       remaining,
-      status: paid >= Number(inv.summary?.amount_due ?? 0) ? "Paid" : paid > 0 ? "Partial" : "Unpaid",
+      status: paid >= (inv.amount_due ?? 0) ? "Paid" : paid > 0 ? "Partial" : "Unpaid",
       lastPayment,
     };
   });
@@ -232,7 +241,8 @@ export default function PaymentTracking() {
                         : inv.status === "Partial"
                         ? "text-yellow-600"
                         : "text-red-600"
-                    }`}>
+                    }`}
+                  >
                     {inv.status}
                   </td>
                   <td>{inv.lastPayment ? new Date(inv.lastPayment.paid_at).toLocaleDateString() : "-"}</td>
@@ -263,13 +273,16 @@ export default function PaymentTracking() {
                 required
                 className="border p-2 rounded w-full"
                 value={formData.invoice_id}
-                onChange={(e) => handleInvoiceSelect(e.target.value)}>
+                onChange={(e) => handleInvoiceSelect(e.target.value)}
+              >
                 <option value="">Select Invoice (Remaining Due)</option>
                 {invoices
                   .map((inv) => {
-                    const paid = payments.filter((p) => p.invoice_id === inv.id).reduce((s, p) => s + Number(p.amount), 0);
-                    const due = Math.max((inv.summary?.amount_due ?? 0) - paid, 0);
-                    if (due === 0) return null;
+                    const paid = payments
+                      .filter((p) => p.invoice_id === inv.id)
+                      .reduce((s, p) => s + p.amount, 0);
+                    const due = Math.max(Number(inv.amount_due ?? 0) - paid, 0);
+                    if (due < 0.01) return null;
                     return (
                       <option key={inv.id} value={inv.id}>
                         {inv.invoice_number} — Rs {due.toFixed(2)}
@@ -298,7 +311,8 @@ export default function PaymentTracking() {
               <select
                 className="border p-2 rounded w-full"
                 value={formData.method}
-                onChange={(e) => setFormData({ ...formData, method: e.target.value })}>
+                onChange={(e) => setFormData({ ...formData, method: e.target.value })}
+              >
                 <option value="cash">Cash</option>
                 <option value="bank_transfer">Bank Transfer</option>
                 <option value="cheque">Cheque</option>
