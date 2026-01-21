@@ -23,7 +23,6 @@ export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 // PATCH partial update
 export const patchInvoiceSchema = z
   .object({
-    client_id: z.uuid().optional(),
     issue_date: z.string().optional(), // YYYY-MM-DD
     due_date: z.string().nullable().optional(),
     currency: z.string().min(1).optional(),
@@ -36,7 +35,6 @@ export const patchInvoiceSchema = z
 
 export type PatchInvoiceInput = z.infer<typeof patchInvoiceSchema>;
 
-// PUT replace items
 export const replaceInvoiceItemsSchema = z
   .object({
     items: z
