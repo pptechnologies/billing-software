@@ -19,7 +19,7 @@ export async function createClient(input: CreateClientInput) {
       input.country ?? null,
     ]
   );
-  return r.rows[0];                                                                                                                                            
+  return r.rows[0];
 }
 
 export async function listClients() {
@@ -36,25 +36,22 @@ export async function getClientById(id: string) {
 
 
 export async function updateClientById(id: string, input: UpdateClientInput) {
- const entries = Object.entries(input).filter(([, v]) => v !== undefined);
+  const keys = Object.keys(input) as (keyof UpdateClientInput)[];
 
-    if (entries.length === 0) {
-    throw Object.assign(new Error("No fields to update"), {
-      status: 400,
-      code: "NoFields",
-    });
+  if (keys.length === 0) {
+    throw Object.assign(new Error("No fields to update"), { status: 400, code: "NoFields" });
   }
 
   const set: string[] = [];
   const params: any[] = [];
   let i = 1;
 
-  for (const [k, v] of entries) {
+  for (const k of keys) {
     set.push(`${k} = $${i++}`);
-    params.push(v);
+    params.push((input as any)[k] ?? null);
   }
 
-
+  // updated_at
   set.push(`updated_at = now()`);
 
   params.push(id);
