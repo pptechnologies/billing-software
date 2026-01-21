@@ -1,8 +1,8 @@
 import { Navigate, Outlet, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-export default function ProtectedRoute({ roles = [], module = null }) {
-  const { user, module: currentModule, loading } = useAuth();
+export default function ProtectedRoute({ roles = [] }) {
+  const { user, loading } = useAuth();
   const location = useLocation();
 
   if (loading) {
@@ -21,10 +21,6 @@ export default function ProtectedRoute({ roles = [], module = null }) {
   const allowedRoles = roles.map((r) => r.toLowerCase());
 
   if (allowedRoles.length && !allowedRoles.includes(userRole)) {
-    return <Navigate to="/unauthorized" replace />;
-  }
-
-  if (module && currentModule?.toLowerCase() !== module.toLowerCase()) {
     return <Navigate to="/unauthorized" replace />;
   }
 
