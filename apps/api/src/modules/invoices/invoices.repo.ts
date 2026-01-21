@@ -17,9 +17,7 @@ async function generateInvoiceNumber(client: any, prefix = "PP") {
     [year]
   );
 
-  const next 
-  
-  = Number(r.rows[0].last_seq);
+  const next = Number(r.rows[0].last_seq);
   const seqStr = String(next).padStart(6, "0");
   return `${prefix}-${year}-${seqStr}`;
 }
@@ -288,6 +286,7 @@ export async function listInvoices(query: any) {
   };
 }
 
+
 export async function listPaymentsForInvoice(invoiceId: string) {
   const r = await pool.query(
     `
@@ -401,10 +400,30 @@ export async function patchInvoice(invoiceId: string, input: PatchInvoiceInput) 
     }
 
     const entries = Object.entries(input).filter(([, v]) => v !== undefined);
-    if (entries.length === 0) {
-      const cur = await client.query(`SELECT * FROM invoices WHERE id=$1`, [invoiceId]);
-      await client.query("COMMIT");
-      return cur.rows[0];
+      if (entries.length === 0) {
+      throw Object.assign(new Error("No fields to update"), { status: 400, code: "NoFields" });
+    }
+  // If tax_rate is changing, recompute totals using current items
+    const taxRateChanging = Object.prototype.hasOwnProperty.call(input, "tax_rate");
+
+    let totalsUpdate: { subtotal: number; tax_rate: number; tax_total: number; total: number } | null = null;
+
+    if (taxRateChanging) {
+      const itemRes = await client.query(
+        `SELECT qty, unit_price
+         FROM invoice_items
+         WHERE invoice_id = $1
+         ORDER BY sort_order ASC`,
+        [invoiceId]
+      );
+
+      const itemsForTotals = itemRes.rows.map((it: any) => ({
+        qty: Number(it.qty),
+        unit_price: Number(it.unit_price),
+      }));
+
+       const taxRate = Number(input.tax_rate ?? inv.tax_rate ?? 13.0);
+      totalsUpdate = computeInvoiceTotals(itemsForTotals, taxRate);
     }
 
     const sets: string[] = [];
@@ -412,12 +431,24 @@ export async function patchInvoice(invoiceId: string, input: PatchInvoiceInput) 
     let i = 1;
 
     for (const [k, v] of entries) {
-      // normalize due_date: allow null to clear
       sets.push(`${k} = $${i++}`);
       params.push(v);
     }
 
+     // apply totals only if tax_rate changed
+    if (totalsUpdate) {
+      sets.push(`subtotal = $${i++}`);
+      params.push(totalsUpdate.subtotal);
+
+      sets.push(`tax_total = $${i++}`);
+      params.push(totalsUpdate.tax_total);
+
+      sets.push(`total = $${i++}`);
+      params.push(totalsUpdate.total);
+    }
+
     sets.push(`updated_at = now()`);
+    
     params.push(invoiceId);
 
     const up = await client.query(
