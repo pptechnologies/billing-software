@@ -34,8 +34,7 @@ export default function BillingDashboard({ user }) {
     { name: "Customers", section: "Billing", path: "/billing/Customers" },
     { name: "Invoices", section: "Billing", path: "/billing/Invoices" },
     { name: "Payment", section: "Billing", path: "/billing/Payment" },
-    { name: "Expenses", section: "Billing", path: "/billing/Expenses" },
-    { name: "Settings", section: "Billing", path: "/billing/Settings" },
+    { name: "Reports", section: "Billing", path: "/billing/Reports" },
 
     { name: "Overview", section: "HRMS", path: "/HRMS/HRMSDashboard" },
     { name: "Employees", section: "HRMS", path: "/HRMS/Employees" },
@@ -101,7 +100,8 @@ export default function BillingDashboard({ user }) {
                         `block p-2 rounded hover:bg-gray-800 ${
                           isActive ? "bg-gray-800 font-semibold" : ""
                         }`
-                      }>
+                      }
+                    >
                       {i.name}
                     </NavLink>
                   </li>

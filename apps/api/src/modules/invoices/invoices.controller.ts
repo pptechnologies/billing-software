@@ -86,7 +86,6 @@ export async function listInvoices(req: Request, res: Response, next: NextFuncti
   }
 }
 
-
 export async function listInvoicePayments(req: Request, res: Response, next: NextFunction) {
   try {
     const invoiceId = req.params.id;

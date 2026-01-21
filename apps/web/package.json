@@ -9,6 +9,7 @@
     "@testing-library/react": "^16.3.1",
     "@testing-library/user-event": "^13.5.0",
     "autoprefixer": "^10.4.23",
+    "axios": "^1.13.2",
     "chart.js": "^4.5.1",
     "lucide-react": "^0.562.0",
     "postcss": "^8.5.6",

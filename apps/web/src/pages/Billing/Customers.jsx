@@ -1,14 +1,15 @@
 import React, { useEffect, useState } from "react";
 import { Pencil, Trash2, Search, X } from "lucide-react";
 
-const API_URL = "http://localhost:4000/clients"; 
+const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:4000";
 
 export default function Customers() {
   const [clients, setClients] = useState([]);
+  const [filteredClients, setFilteredClients] = useState([]);
   const [showModal, setShowModal] = useState(false);
+  const [editingClient, setEditingClient] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -16,14 +17,18 @@ export default function Customers() {
     city: "",
     country: "",
   });
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const normalizeId = (client) => client.id || client._id;
 
   const fetchClients = async () => {
     setLoading(true);
     try {
-      const res = await fetch(API_URL);
+      const res = await fetch(`${API_BASE}/clients`);
       if (!res.ok) throw new Error("Failed to fetch clients");
       const data = await res.json();
-      setClients(data);
+      setClients(data || []);
+      setFilteredClients(data || []);
       setError(null);
     } catch (err) {
       console.error("Error fetching clients:", err);
@@ -36,7 +41,6 @@ export default function Customers() {
   useEffect(() => {
     fetchClients();
   }, []);
-
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
@@ -44,23 +48,81 @@ export default function Customers() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await fetch(API_URL, {
-        method: "POST",
+      const method = editingClient ? "PATCH" : "POST";
+      const url = editingClient
+        ? `${API_BASE}/clients/${normalizeId(editingClient)}`
+        : `${API_BASE}/clients`;
+
+      const res = await fetch(url, {
+        method,
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(formData),
       });
 
-      if (!res.ok) throw new Error("Failed to create client");
+      if (!res.ok) throw new Error("Failed to save client");
+      const savedClient = await res.json();
 
-      const newClient = await res.json();
-      setClients((prev) => [...prev, newClient]);
+      if (editingClient) {
+        setClients((prev) =>
+          prev.map((c) =>
+            normalizeId(c) === normalizeId(savedClient) ? savedClient : c
+          )
+        );
+      } else {
+        setClients((prev) => [...prev, savedClient]);
+      }
+
       setFormData({ name: "", email: "", phone: "", city: "", country: "" });
+      setEditingClient(null);
       setShowModal(false);
       setError(null);
+      setFilteredClients((prev) => [...prev]); 
     } catch (err) {
-      console.error("Error creating client:", err);
-      setError("Failed to create client");
+      console.error("Error saving client:", err);
+      setError("Failed to save client");
     }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm("Are you sure you want to delete this client?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/clients/${id}`, { method: "DELETE" });
+      if (!res.ok) {
+        const errorData = await res.json();
+        alert(errorData.message || "Failed to delete client");
+        return;
+      }
+      setClients((prev) => prev.filter((c) => normalizeId(c) !== id));
+      setFilteredClients((prev) => prev.filter((c) => normalizeId(c) !== id));
+    } catch (err) {
+      console.error("Error deleting client:", err);
+      alert("Failed to delete client");
+    }
+  };
+
+  const handleEdit = (client) => {
+    setEditingClient(client);
+    setFormData({
+      name: client.name || "",
+      email: client.email || "",
+      phone: client.phone || "",
+      city: client.city || "",
+      country: client.country || "",
+    });
+    setShowModal(true);
+  };
+
+  const handleSearch = (e) => {
+    const query = e.target.value.toLowerCase();
+    setSearchQuery(query);
+    setFilteredClients(
+      clients.filter(
+        (c) =>
+          (c.name || "").toLowerCase().includes(query) ||
+          (c.email || "").toLowerCase().includes(query) ||
+          (c.phone || "").toLowerCase().includes(query)
+      )
+    );
   };
 
   return (
@@ -71,7 +133,11 @@ export default function Customers() {
           <p className="text-gray-500 text-sm">Manage your clients</p>
         </div>
         <button
-          onClick={() => setShowModal(true)}
+          onClick={() => {
+            setEditingClient(null);
+            setFormData({ name: "", email: "", phone: "", city: "", country: "" });
+            setShowModal(true);
+          }}
           className="bg-black text-white px-4 py-2 rounded-lg text-sm">
           + Add Client
         </button>
@@ -95,7 +161,9 @@ export default function Customers() {
             <input
               type="text"
               placeholder="Search Customers"
-              className="pl-9 pr-4 py-2 border rounded-lg text-sm"/>
+              className="pl-9 pr-4 py-2 border rounded-lg text-sm"
+              value={searchQuery}
+              onChange={handleSearch}/>
           </div>
         </div>
 
@@ -116,16 +184,16 @@ export default function Customers() {
                 </tr>
               </thead>
               <tbody>
-                {clients.length === 0 ? (
+                {filteredClients.length === 0 ? (
                   <tr>
                     <td colSpan="7" className="text-center py-10 text-gray-400">
                       No clients found
                     </td>
                   </tr>
                 ) : (
-                  clients.map((client) => (
+                  filteredClients.map((client) => (
                     <tr
-                      key={client._id || client.id}
+                      key={normalizeId(client)}
                       className="border-b last:border-none hover:bg-gray-50">
                       <td className="py-3 font-medium">{client.name}</td>
                       <td>{client.email}</td>
@@ -138,10 +206,14 @@ export default function Customers() {
                         </span>
                       </td>
                       <td className="flex gap-3 py-3">
-                        <button className="text-gray-500 hover:text-black">
+                        <button
+                          className="text-gray-500 hover:text-black"
+                          onClick={() => handleEdit(client)}>
                           <Pencil size={16} />
                         </button>
-                        <button className="text-red-500 hover:text-red-700">
+                        <button
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => handleDelete(normalizeId(client))}>
                           <Trash2 size={16} />
                         </button>
                       </td>
@@ -158,7 +230,9 @@ export default function Customers() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl w-full max-w-lg p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Add Client</h3>
+              <h3 className="text-lg font-semibold">
+                {editingClient ? "Edit Client" : "Add Client"}
+              </h3>
               <button
                 onClick={() => setShowModal(false)}
                 className="text-gray-400 hover:text-black">
@@ -210,7 +284,7 @@ export default function Customers() {
                 <button
                   type="submit"
                   className="px-4 py-2 bg-black text-white rounded">
-                  Save Client
+                  {editingClient ? "Update Client" : "Save Client"}
                 </button>
               </div>
             </form>

@@ -8,8 +8,10 @@ import BillingOverview from "./pages/Billing/BillingOverview";
 import Customers from "./pages/Billing/Customers";
 import Invoices from "./pages/Billing/Invoices";
 import Payment from "./pages/Billing/Payment";
+import Reports from "./pages/Billing/Reports";
 import Login from "./Login";
 import Unauthorized from "./Unauthorized";
+import LandingPage from "./components/LandingPage";
 
 function App() {
   return (
@@ -18,6 +20,7 @@ function App() {
         <Navbar />
 
         <Routes>
+          <Route path="/LandingPage" element={<LandingPage/>}/>
           <Route path="/login" element={<Login />} />
           <Route path="/unauthorized" element={<Unauthorized />} />
 
@@ -28,6 +31,7 @@ function App() {
               <Route path = "Customers" element={<Customers />} />
               <Route path = "Invoices" element={<Invoices />}/>
               <Route path = "Payment" element ={<Payment />}/>
+              <Route path = "Reports" element = {<Reports/>}/>
             </Route>
           </Route>
 
