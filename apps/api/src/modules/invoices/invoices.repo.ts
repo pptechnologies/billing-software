@@ -335,7 +335,7 @@ export async function listPaymentsForInvoiceWithSummary(invoiceId: string) {
 
   const amount_paid = Number(sumRes.rows[0].amount_paid);
   const total = Number(invoice.total);
-  const amount_due = Math.max(total - amount_paid, 0);
+  const amount_due = Math.max(total   - amount_paid, 0);
 
   // 3. Load payments
   const payRes = await pool.query(

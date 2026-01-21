@@ -92,15 +92,16 @@ export async function listInvoicePayments(req: Request, res: Response, next: Nex
     const invoiceId = req.params.id;
 
     const result = await repo.listPaymentsForInvoiceWithSummary(invoiceId);
-    if (!result) {
-      return res.status(404).json({ error: "InvoiceNotFound" });
-    }
 
-    return res.json(result);
+    if (!result) return res.status(404).json({ error: "InvoiceNotFound" });
+
+    // result = { invoice, summary: { total, amount_paid, amount_due }, payments }
+    res.json(result);
   } catch (err) {
     next(err);
   }
 }
+
 
 function money(n: any) {
   const x = Number(n ?? 0);
