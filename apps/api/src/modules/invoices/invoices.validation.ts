@@ -2,8 +2,8 @@ import { z } from "zod";
 
 export const createInvoiceSchema = z.object({
 client_id: z.uuid(),
-  issue_date: z.string().optional(), // YYYY-MM-DD (optional)
-  due_date: z.string().optional(),
+  issue_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD").optional(),
+due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD").optional(),
   currency: z.string().min(1).default("NPR"),
   notes: z.string().optional(),
   tax_rate: z.number().min(0).max(100).optional(), // default to 13 in controller/repo
@@ -24,8 +24,8 @@ export type CreateInvoiceInput = z.infer<typeof createInvoiceSchema>;
 export const patchInvoiceSchema = z
   .object({
     client_id: z.uuid().optional(),
-    issue_date: z.string().optional(), // YYYY-MM-DD
-    due_date: z.string().nullable().optional(),
+    issue_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD").optional(),
+due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD").optional(),
     currency: z.string().min(1).optional(),
     notes: z.string().nullable().optional(),
     tax_rate: z.number().min(0).max(100).optional(),

@@ -224,9 +224,13 @@ export async function listInvoices(query: any) {
 
   const whereSql = where.length ? `WHERE ${where.join(" AND ")}` : "";
 
-  const limit = Math.min(Math.max(Number(q.limit ?? 20), 1), 100);
-  const page = Math.max(Number(q.page ?? 1), 1);
-  const offset = (page - 1) * limit;
+const rawLimit = Number.parseInt(String(q.limit ?? ""), 10);
+const rawPage  = Number.parseInt(String(q.page ?? ""), 10);
+
+const limit = Math.min(Math.max(Number.isFinite(rawLimit) && rawLimit > 0 ? rawLimit : 20, 1), 100);
+const page  = Math.max(Number.isFinite(rawPage) && rawPage > 0 ? rawPage : 1, 1);
+const offset = (page - 1) * limit;
+
 
   // total count
   const countRes = await pool.query(
@@ -398,6 +402,12 @@ export async function patchInvoice(invoiceId: string, input: PatchInvoiceInput) 
         code: "InvoiceNotDraft",
       });
     }
+if (input.client_id) {
+  const clientCheck = await client.query(`SELECT 1 FROM clients WHERE id = $1`, [input.client_id]);
+  if (!clientCheck.rowCount) {
+    throw Object.assign(new Error("Client not found"), { status: 404, code: "ClientNotFound" });
+  }
+}
 
     const entries = Object.entries(input).filter(([, v]) => v !== undefined);
       if (entries.length === 0) {
