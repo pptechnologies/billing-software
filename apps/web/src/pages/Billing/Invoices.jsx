@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from "react";
-import { X, Pencil, Trash2 } from "lucide-react";
+import { X, Pencil, Trash2, Search } from "lucide-react";
+// Added only these two imports
+import toast, { Toaster } from "react-hot-toast";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:4000";
 
@@ -11,7 +13,6 @@ export default function Invoices() {
   const [error, setError] = useState("");
   const [editingInvoice, setEditingInvoice] = useState(null);
   const [activeTab, setActiveTab] = useState("active"); 
-
   const [formData, setFormData] = useState({
     client_id: "",
     tax_rate: 13,
@@ -20,6 +21,7 @@ export default function Invoices() {
     due_date: "",
     items: [{ description: "", qty: 1, unit_price: "" }],
   });
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     fetchClients();
@@ -33,6 +35,7 @@ export default function Invoices() {
       setClients(json || []);
     } catch (err) {
       console.error(err);
+      toast.error("Failed to fetch clients"); // Added toast
     }
   }
 
@@ -58,6 +61,7 @@ export default function Invoices() {
       setInvoices(invoicesWithPayments);
     } catch (err) {
       console.error(err);
+      toast.error("Failed to load invoices"); // Added toast
     } finally {
       setLoading(false);
     }
@@ -75,6 +79,67 @@ export default function Invoices() {
       return "Unpaid";
     }
     return "Draft";
+  }
+
+  async function issueInvoice(id) {
+    const tid = toast.loading("Issuing invoice..."); // Added toast
+    try {
+      const res = await fetch(`${API_BASE}/invoices/${id}/issue`, { method: "POST" });
+      if (!res.ok) throw new Error("Failed to issue invoice");
+      await fetchInvoices();
+      toast.success("Invoice Issued", { id: tid }); // Added toast
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message, { id: tid }); // Added toast
+    }
+  }
+
+  async function exportPDF(id) {
+    const tid = toast.loading("Preparing PDF..."); // Added toast
+    try {
+      const res = await fetch(`${API_BASE}/invoices/${id}/pdf`);
+      if (!res.ok) throw new Error("Could not generate PDF");
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `invoice_${id}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Download started", { id: tid }); // Added toast
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message, { id: tid }); // Added toast
+    }
+  }
+
+  function handleEditInvoice(inv) {
+    setEditingInvoice(inv);
+    setFormData({
+      client_id: inv.client_id,
+      tax_rate: inv.tax_rate,
+      currency: inv.currency,
+      notes: inv.notes || "",
+      due_date: inv.due_date || "",
+      items: inv.items || [{ description: "", qty: 1, unit_price: "" }],
+    });
+    setShowModal(true);
+  }
+
+  async function handleDeleteInvoice(id) {
+    if (!window.confirm("Are you sure you want to delete this invoice?")) return;
+    try {
+      const res = await fetch(`${API_BASE}/invoices/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error("Failed to delete invoice");
+      setInvoices((prev) => prev.filter((inv) => inv.id !== id));
+      toast.success("Invoice deleted"); // Added toast
+    } catch (err) {
+      console.error(err);
+      toast.error(err.message); // Added toast
+    }
   }
 
   function handleItemChange(index, field, value) {
@@ -102,20 +167,18 @@ export default function Invoices() {
     setError("");
 
     if (!formData.client_id || formData.items.length === 0 || !formData.items[0].description) {
-      setError("Client and at least one item are required");
+      toast.error("Client and at least one item are required"); // Added toast
       return;
     }
 
+    const tid = toast.loading("Saving invoice..."); // Added toast
+
     try {
       if (editingInvoice) {
-
         const patchRes = await fetch(`${API_BASE}/invoices/${editingInvoice.id}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            notes: formData.notes,
-            due_date: formData.due_date,
-          }),
+          body: JSON.stringify({ notes: formData.notes, due_date: formData.due_date }),
         });
         if (!patchRes.ok) throw new Error("Failed to update invoice");
 
@@ -125,8 +188,8 @@ export default function Invoices() {
           body: JSON.stringify({ items: formData.items }),
         });
         if (!putRes.ok) throw new Error("Failed to update invoice items");
-
         await fetchInvoices();
+        toast.success("Invoice updated", { id: tid }); // Added toast
       } else {
         const payload = {
           client_id: formData.client_id,
@@ -152,6 +215,7 @@ export default function Invoices() {
 
         const data = await res.json();
         setInvoices((prev) => [{ ...data.invoice, payments: [] }, ...prev]);
+        toast.success("Invoice created", { id: tid }); // Added toast
       }
 
       setShowModal(false);
@@ -166,76 +230,25 @@ export default function Invoices() {
       });
     } catch (err) {
       console.error(err);
-      setError(err.message);
+      toast.error(err.message, { id: tid }); // Added toast
     }
   }
 
-  async function issueInvoice(id) {
-    try {
-      const res = await fetch(`${API_BASE}/invoices/${id}/issue`, { method: "POST" });
-      if (!res.ok) throw new Error("Failed to issue invoice");
-      await fetchInvoices();
-    } catch (err) {
-      console.error(err);
-      alert(err.message);
+  const activeInvoices = invoices.filter(inv => getInvoiceStatus(inv) !== "Paid");
+  const archivedInvoices = invoices.filter(inv => getInvoiceStatus(inv) === "Paid");
+
+  const filteredInvoices = (activeTab === "active" ? activeInvoices : archivedInvoices).filter(
+    (inv) => {
+      const q = searchQuery.toLowerCase();
+      return inv.invoice_number.toLowerCase().includes(q) || (inv.client_name?.toLowerCase() || "").includes(q);
     }
-  }
-
-  async function exportPDF(id) {
-    try {
-      const res = await fetch(`${API_BASE}/invoices/${id}/pdf`);
-      if (!res.ok) throw new Error("Could not generate PDF");
-
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `invoice_${id}.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (err) {
-      console.error(err);
-      alert(err.message);
-    }
-  }
-
-  function handleEditInvoice(inv) {
-    setEditingInvoice(inv);
-    setFormData({
-      client_id: inv.client_id,
-      tax_rate: inv.tax_rate,
-      currency: inv.currency,
-      notes: inv.notes || "",
-      due_date: inv.due_date || "",
-      items: inv.items || [{ description: "", qty: 1, unit_price: "" }],
-    });
-    setShowModal(true);
-  }
-
-  async function handleDeleteInvoice(id) {
-    if (!window.confirm("Are you sure you want to delete this invoice?")) return;
-
-    try {
-      const res = await fetch(`${API_BASE}/invoices/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Failed to delete invoice");
-      setInvoices((prev) => prev.filter((inv) => inv.id !== id));
-    } catch (err) {
-      console.error(err);
-      alert(err.message);
-    }
-  }
-
-  const activeInvoices = invoices.filter(
-    (inv) => getInvoiceStatus(inv) !== "Paid"
-  );
-  const archivedInvoices = invoices.filter(
-    (inv) => getInvoiceStatus(inv) === "Paid"
   );
 
   return (
     <div className="bg-[#f6f7fb] min-h-screen p-6">
+      {/* 2. Added Toaster component here */}
+      <Toaster position="top-right" reverseOrder={false} />
+
       <div className="flex justify-between items-center mb-6">
         <div>
           <h2 className="text-2xl font-semibold">Invoice Management</h2>
@@ -261,24 +274,36 @@ export default function Invoices() {
 
       <div className="flex gap-4 mb-4">
         <button
-          className={`px-4 py-2 rounded ${
-            activeTab === "active" ? "bg-black text-white" : "bg-gray-200"
-          }`}
+          className={`px-4 py-2 rounded ${activeTab === "active" ? "bg-black text-white" : "bg-gray-200"}`}
           onClick={() => setActiveTab("active")}>
           Active Invoices ({activeInvoices.length})
         </button>
         <button
-          className={`px-4 py-2 rounded ${
-            activeTab === "archive" ? "bg-black text-white" : "bg-gray-200"
-          }`}
+          className={`px-4 py-2 rounded ${activeTab === "archive" ? "bg-black text-white" : "bg-gray-200"}`}
           onClick={() => setActiveTab("archive")}>
           Archived Invoices ({archivedInvoices.length})
         </button>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm p-5">
+        <div className="flex justify-between items-center mb-4">
+          <p className="text-gray-600 font-medium">
+            Total Invoices: {filteredInvoices.length}
+          </p>
+          <div className="relative">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+            <input
+              type="text"
+              placeholder="Search Invoices"
+              className="pl-9 pr-4 py-2 border rounded-lg text-sm"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+          </div>
+        </div>
+
         {loading ? (
-          <p className="text-sm text-gray-400">Loading...</p>
+          <p className="text-gray-500 py-10 text-center">Loading invoices...</p>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
@@ -293,15 +318,19 @@ export default function Invoices() {
                 </tr>
               </thead>
               <tbody>
-                {(activeTab === "active" ? activeInvoices : archivedInvoices).map(
-                  (inv) => {
+                {filteredInvoices.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" className="text-center py-10 text-gray-400">
+                      No invoices found
+                    </td>
+                  </tr>
+                ) : (
+                  filteredInvoices.map((inv) => {
                     const status = getInvoiceStatus(inv);
                     const isArchived = status === "Paid";
                     const lastPaymentDate =
                       inv.payments?.length > 0
-                        ? new Date(
-                            inv.payments[inv.payments.length - 1].paid_at
-                          ).toLocaleDateString()
+                        ? new Date(inv.payments[inv.payments.length - 1].paid_at).toLocaleDateString()
                         : "-";
 
                     return (
@@ -315,7 +344,7 @@ export default function Invoices() {
                           <button
                             onClick={() => issueInvoice(inv.id)}
                             disabled={isArchived || status !== "Draft"}
-                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm">
+                            className="px-2 py-1 bg-blue-100 text-blue-700 rounded text-sm disabled:opacity-50">
                             Issue
                           </button>
                           <button
@@ -326,19 +355,19 @@ export default function Invoices() {
                           <button
                             onClick={() => handleEditInvoice(inv)}
                             disabled={isArchived}
-                            className="text-gray-500 hover:text-black">
+                            className="text-gray-500 hover:text-black disabled:opacity-30">
                             <Pencil size={14} />
                           </button>
                           <button
                             onClick={() => handleDeleteInvoice(inv.id)}
                             disabled={isArchived}
-                            className="text-red-500 hover:text-red-700">
+                            className="text-red-500 hover:text-red-700 disabled:opacity-30">
                             <Trash2 size={14} />
                           </button>
                         </td>
                       </tr>
                     );
-                  }
+                  })
                 )}
               </tbody>
             </table>
@@ -350,9 +379,7 @@ export default function Invoices() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl w-full max-w-lg p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">
-                {editingInvoice ? "Edit Invoice" : "Create Invoice"}
-              </h3>
+              <h3 className="text-lg font-semibold">{editingInvoice ? "Edit Invoice" : "Create Invoice"}</h3>
               <button onClick={() => setShowModal(false)}>
                 <X size={18} />
               </button>
@@ -364,9 +391,7 @@ export default function Invoices() {
               <select
                 className="border p-2 rounded w-full"
                 value={formData.client_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, client_id: e.target.value })
-                }>
+                onChange={(e) => setFormData({ ...formData, client_id: e.target.value })}>
                 <option value="">Select Client</option>
                 {clients.map((c) => (
                   <option key={c.id || c._id} value={c.id || c._id}>
@@ -380,27 +405,20 @@ export default function Invoices() {
                 placeholder="Tax Rate (%)"
                 className="border p-2 rounded w-full"
                 value={formData.tax_rate}
-                onChange={(e) =>
-                  setFormData({ ...formData, tax_rate: e.target.value })
-                }/>
-
+                onChange={(e) => setFormData({ ...formData, tax_rate: e.target.value })}/>
               <input
                 type="text"
                 placeholder="Notes"
                 className="border p-2 rounded w-full"
                 value={formData.notes}
-                onChange={(e) =>
-                  setFormData({ ...formData, notes: e.target.value })
-                }/>
-
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              />
               <input
                 type="date"
                 placeholder="Due Date"
                 className="border p-2 rounded w-full"
                 value={formData.due_date}
-                onChange={(e) =>
-                  setFormData({ ...formData, due_date: e.target.value })
-                }/>
+                onChange={(e) => setFormData({ ...formData, due_date: e.target.value })}/>
 
               {formData.items.map((item, i) => (
                 <div key={i} className="grid grid-cols-3 gap-2 items-center">
@@ -408,9 +426,7 @@ export default function Invoices() {
                     placeholder="Description"
                     className="border p-2 rounded"
                     value={item.description}
-                    onChange={(e) =>
-                      handleItemChange(i, "description", e.target.value)
-                    }/>
+                    onChange={(e) => handleItemChange(i, "description", e.target.value)}/>
                   <input
                     type="number"
                     placeholder="Qty"
@@ -422,29 +438,19 @@ export default function Invoices() {
                     placeholder="Unit Price"
                     className="border p-2 rounded"
                     value={item.unit_price}
-                    onChange={(e) =>
-                      handleItemChange(i, "unit_price", e.target.value)
-                    }/>
+                    onChange={(e) => handleItemChange(i, "unit_price", e.target.value)}/>
                   {i > 0 && (
-                    <button
-                      type="button"
-                      className="text-red-500"
-                      onClick={() => removeItem(i)}>
+                    <button type="button" className="text-red-500" onClick={() => removeItem(i)}>
                       <X size={18} />
                     </button>
                   )}
                 </div>
               ))}
 
-              <button type="button" onClick={addItem} className="text-blue-500">
-                + Add Item
-              </button>
+              <button type="button" onClick={addItem} className="text-blue-500">+ Add Item</button>
 
               <div className="flex justify-end gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border rounded">
+                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded">
                   Cancel
                 </button>
                 <button type="submit" className="px-4 py-2 bg-black text-white rounded">
