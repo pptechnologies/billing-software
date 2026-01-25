@@ -26,14 +26,11 @@ app.get('/db-health', async (_req, res, next) => {
   }
 });
 
-
-// Global error handler
-app.use(errorHandler);
-
 app.use("/invoices", invoiceRoutes);
 app.use("/clients", clientRoutes);
 app.use("/payments", paymentRoutes);
 app.use("/reports", reportsRouter);
-
+// Global error handler
+app.use(errorHandler);
 
 export default app;
