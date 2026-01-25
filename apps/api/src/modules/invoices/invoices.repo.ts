@@ -374,8 +374,7 @@ export async function getLatestPaymentForInvoice(invoiceId: string) {
   );
 
   return r.rows[0] ?? null;
-}
-
+}  
 
 // helper: fetch invoice status with lock
 export async function getInvoiceForUpdate(client: any, invoiceId: string) {
