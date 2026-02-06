@@ -1,18 +1,19 @@
 import { Router } from "express";
 import * as controller from "./client.controller";
 import { listInvoicesForClient } from "../invoices/invoices.controller";
-
+import { requireAuth, requireRole } from "../../middleware/auth";
 
 const router = Router();
 
-router.post("/", controller.createClient);
-router.get("/", controller.listClients);
-router.get("/:id", controller.getClient);
+router.get("/", requireAuth, controller.listClients);
+router.post("/", requireAuth, controller.createClient);
 
-router.patch("/:id", controller.updateClient);
-router.delete("/:id", controller.deleteClient);
+router.get("/:id", requireAuth, controller.getClient);
+router.get("/:id/invoices", requireAuth, listInvoicesForClient);
 
-router.get("/:id/invoices", listInvoicesForClient);
+router.patch("/:id", requireAuth, controller.updateClient);
 
+// role required: admin
+router.delete("/:id", requireAuth, requireRole("admin"), controller.deleteClient);
 
 export default router;
