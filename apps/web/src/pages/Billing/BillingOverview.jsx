@@ -105,7 +105,7 @@ export default function BillingDashboard({ user }) {
       <aside className="w-64 bg-black text-white p-6 sticky top-0 h-screen overflow-y-auto">
         <h2 className="text-2xl font-bold mb-6">Dashboard</h2>
         {["Billing", "HRMS"].map((section) => (
-          <div key={section} className="mb-6">
+          <div key={section} className="mb-8">
             <h3 className="text-gray-400 uppercase text-xs font-bold tracking-widest mb-3">{section}</h3>
             <ul>
               {sidebarItems.filter((i) => i.section === section).map((i) => (

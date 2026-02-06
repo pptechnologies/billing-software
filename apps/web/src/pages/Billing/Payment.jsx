@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { XMarkIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
-// 1. Import toast and Toaster
 import toast, { Toaster } from "react-hot-toast";
 
 const API_BASE = "http://localhost:4000";
@@ -178,7 +177,7 @@ export default function PaymentTracking() {
 
   return (
     <div className="min-h-screen bg-[#F5F5F5] p-8 font-sans">
-      {/* 2. Added Toaster component */}
+
       <Toaster position="top-right" reverseOrder={false} />
 
       <div className="flex justify-between mb-8">
@@ -334,10 +333,12 @@ export default function PaymentTracking() {
                     value={formData.note}
                     onChange={(e) => setFormData({ ...formData, note: e.target.value })}/>
                 </div>
-
-                <button type="submit" className="bg-black text-white w-full py-3 rounded-xl font-bold hover:bg-gray-800 active:scale-95 transition-all">
-                  Save Payment
-                </button>
+                <div className="flex justify-end gap-3 pt-4">
+                  <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded">Cancel</button>
+                  <button type="submit" className="px-4 py-2 bg-black text-white rounded">
+                    Save Payment
+                  </button>
+                </div>
               </form>
             </div>
           </div>

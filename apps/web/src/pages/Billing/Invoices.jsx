@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { X, Pencil, Trash2, Search } from "lucide-react";
-// Added only these two imports
+
 import toast, { Toaster } from "react-hot-toast";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:4000";
@@ -35,7 +35,7 @@ export default function Invoices() {
       setClients(json || []);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to fetch clients"); // Added toast
+      toast.error("Failed to fetch clients"); 
     }
   }
 
@@ -61,7 +61,7 @@ export default function Invoices() {
       setInvoices(invoicesWithPayments);
     } catch (err) {
       console.error(err);
-      toast.error("Failed to load invoices"); // Added toast
+      toast.error("Failed to load invoices"); 
     } finally {
       setLoading(false);
     }
@@ -82,20 +82,20 @@ export default function Invoices() {
   }
 
   async function issueInvoice(id) {
-    const tid = toast.loading("Issuing invoice..."); // Added toast
+    const tid = toast.loading("Issuing invoice..."); 
     try {
       const res = await fetch(`${API_BASE}/invoices/${id}/issue`, { method: "POST" });
       if (!res.ok) throw new Error("Failed to issue invoice");
       await fetchInvoices();
-      toast.success("Invoice Issued", { id: tid }); // Added toast
+      toast.success("Invoice Issued", { id: tid });
     } catch (err) {
       console.error(err);
-      toast.error(err.message, { id: tid }); // Added toast
+      toast.error(err.message, { id: tid }); 
     }
   }
 
   async function exportPDF(id) {
-    const tid = toast.loading("Preparing PDF..."); // Added toast
+    const tid = toast.loading("Preparing PDF..."); 
     try {
       const res = await fetch(`${API_BASE}/invoices/${id}/pdf`);
       if (!res.ok) throw new Error("Could not generate PDF");
@@ -109,10 +109,10 @@ export default function Invoices() {
       link.click();
       link.remove();
       window.URL.revokeObjectURL(url);
-      toast.success("Download started", { id: tid }); // Added toast
+      toast.success("Download started", { id: tid }); 
     } catch (err) {
       console.error(err);
-      toast.error(err.message, { id: tid }); // Added toast
+      toast.error(err.message, { id: tid }); 
     }
   }
 
@@ -135,10 +135,10 @@ export default function Invoices() {
       const res = await fetch(`${API_BASE}/invoices/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error("Failed to delete invoice");
       setInvoices((prev) => prev.filter((inv) => inv.id !== id));
-      toast.success("Invoice deleted"); // Added toast
+      toast.success("Invoice deleted"); 
     } catch (err) {
       console.error(err);
-      toast.error(err.message); // Added toast
+      toast.error(err.message); 
     }
   }
 
@@ -167,11 +167,11 @@ export default function Invoices() {
     setError("");
 
     if (!formData.client_id || formData.items.length === 0 || !formData.items[0].description) {
-      toast.error("Client and at least one item are required"); // Added toast
+      toast.error("Client and at least one item are required");
       return;
     }
 
-    const tid = toast.loading("Saving invoice..."); // Added toast
+    const tid = toast.loading("Saving invoice..."); 
 
     try {
       if (editingInvoice) {
@@ -189,7 +189,7 @@ export default function Invoices() {
         });
         if (!putRes.ok) throw new Error("Failed to update invoice items");
         await fetchInvoices();
-        toast.success("Invoice updated", { id: tid }); // Added toast
+        toast.success("Invoice updated", { id: tid }); 
       } else {
         const payload = {
           client_id: formData.client_id,
@@ -215,7 +215,7 @@ export default function Invoices() {
 
         const data = await res.json();
         setInvoices((prev) => [{ ...data.invoice, payments: [] }, ...prev]);
-        toast.success("Invoice created", { id: tid }); // Added toast
+        toast.success("Invoice created", { id: tid });
       }
 
       setShowModal(false);
@@ -230,7 +230,7 @@ export default function Invoices() {
       });
     } catch (err) {
       console.error(err);
-      toast.error(err.message, { id: tid }); // Added toast
+      toast.error(err.message, { id: tid }); 
     }
   }
 
@@ -246,7 +246,7 @@ export default function Invoices() {
 
   return (
     <div className="bg-[#f6f7fb] min-h-screen p-6">
-      {/* 2. Added Toaster component here */}
+
       <Toaster position="top-right" reverseOrder={false} />
 
       <div className="flex justify-between items-center mb-6">
@@ -411,8 +411,7 @@ export default function Invoices() {
                 placeholder="Notes"
                 className="border p-2 rounded w-full"
                 value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              />
+                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}/>
               <input
                 type="date"
                 placeholder="Due Date"
@@ -447,7 +446,7 @@ export default function Invoices() {
                 </div>
               ))}
 
-              <button type="button" onClick={addItem} className="text-blue-500">+ Add Item</button>
+              <button type="button" onClick={addItem} className="text-black">+ Add Item</button>
 
               <div className="flex justify-end gap-3 pt-4">
                 <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded">
