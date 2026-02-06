@@ -1,22 +1,31 @@
 import { Router } from "express";
 import * as controller from "./invoices.controller";
 import { createPayment } from "../payments/payments.controller";
+import { requireAuth, requireRole } from "../../middleware/auth";
 
 const router = Router();
 
-router.post("/", controller.createInvoice);
-router.get("/:id", controller.getInvoice);
-router.post("/:id/issue", controller.issueInvoice);
-router.post("/:id/payments", createPayment);
-router.get("/", controller.listInvoices);               
-router.get("/:id/payments", controller.listInvoicePayments);
-router.get("/:id/pdf", controller.getInvoicePdf);
-router.get("/:id/receipt/pdf", controller.getInvoiceReceiptPdf);
-router.patch("/:id", controller.patchInvoice);
-router.put("/:id/items", controller.replaceInvoiceItems);
-router.delete("/:id", controller.deleteInvoice);
+// invoices list/create
+router.get("/", requireAuth, controller.listInvoices);
+router.post("/", requireAuth, controller.createInvoice);
 
+// invoice actions
+router.get("/:id", requireAuth, controller.getInvoice);
+router.post("/:id/issue", requireAuth, controller.issueInvoice);
 
+// payments for an invoice
+router.get("/:id/payments", requireAuth, controller.listInvoicePayments);
+router.post("/:id/payments", requireAuth, createPayment);
 
+// pdfs 
+router.get("/:id/pdf", requireAuth, controller.getInvoicePdf);
+router.get("/:id/receipt/pdf", requireAuth, controller.getInvoiceReceiptPdf);
+
+// edits
+router.patch("/:id", requireAuth, controller.patchInvoice);
+router.put("/:id/items", requireAuth, controller.replaceInvoiceItems);
+
+// role required: admin
+router.delete("/:id", requireAuth, requireRole("admin"), controller.deleteInvoice);
 
 export default router;
