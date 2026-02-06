@@ -3,12 +3,12 @@ import { Link } from "react-router-dom";
 import { ArrowRight, BarChart3, ShieldCheck, Users, Zap } from "lucide-react";
 
 export default function LandingPage() {
-  // Helper to handle smooth scroll or empty clicks without console errors
+
   const handleFooterLink = (e) => e.preventDefault();
 
   return (
     <div className="bg-[#030303] text-white min-h-screen font-sans selection:bg-blue-500/30">
-      {/* 1. Navigation */}
+
       <nav className="flex items-center justify-between px-8 py-6 border-b border-white/5 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center">
@@ -30,7 +30,6 @@ export default function LandingPage() {
         </Link>
       </nav>
 
-      {/* 2. Hero Section */}
       <section className="relative px-8 pt-24 pb-12 flex flex-col items-center text-center overflow-hidden">
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-blue-600/10 blur-[120px] rounded-full -z-10"></div>
 
@@ -64,7 +63,6 @@ export default function LandingPage() {
           </div>
         </div>
 
-        {/* 3. Dashboard Product Reveal */}
         <div className="mt-24 w-full max-w-6xl mx-auto relative group">
           <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000"></div>
           
@@ -82,14 +80,12 @@ export default function LandingPage() {
                 <img 
                     src="/dashboard-mockup.png" 
                     alt="BizFlow Dashboard" 
-                    className="w-full h-auto rounded-lg shadow-inner" 
-                />
+                    className="w-full h-auto rounded-lg shadow-inner" />
             </div>
           </div>
         </div>
       </section>
 
-      {/* 4. Bento Grid Features */}
       <section className="px-8 py-24 max-w-6xl mx-auto" id="features">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <div className="md:col-span-2 bg-white/5 border border-white/10 p-8 rounded-3xl hover:bg-white/[0.07] transition-colors">
@@ -115,7 +111,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 5. Footer - FIXED href accessibilty errors */}
       <footer className="border-t border-white/5 px-8 py-12 flex flex-col md:flex-row justify-between items-center gap-6">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 bg-white rounded flex items-center justify-center">
@@ -125,7 +120,7 @@ export default function LandingPage() {
         </div>
         <p className="text-gray-500 text-sm">© 2026 BizFlow Technologies. All rights reserved.</p>
         <div className="flex gap-6 text-sm text-gray-400">
-          {/* Using buttons instead of empty links to fix ESLint errors */}
+
           <button onClick={handleFooterLink} className="hover:text-white transition-colors">Privacy</button>
           <button onClick={handleFooterLink} className="hover:text-white transition-colors">Terms</button>
         </div>

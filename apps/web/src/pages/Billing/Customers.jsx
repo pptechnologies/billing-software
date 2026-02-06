@@ -54,8 +54,7 @@ export default function Customers() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    // Simple validation before submitting
+
     if (formData.phone && formData.phone.length !== 10) {
       return toast.error("Phone number must be exactly 10 digits");
     }
@@ -248,8 +247,7 @@ export default function Customers() {
                 placeholder="Phone (10 digits)" 
                 className="border p-2 rounded w-full" 
                 onChange={handleChange} 
-                value={formData.phone}
-              />
+                value={formData.phone}/>
               
               <input name="city" placeholder="City" className="border p-2 rounded w-full" onChange={handleChange} value={formData.city}/>
               <input name="country" placeholder="Country" className="border p-2 rounded w-full" onChange={handleChange} value={formData.country}/>
