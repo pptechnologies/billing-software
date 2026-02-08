@@ -1,6 +1,9 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../../middleware/auth";
-import { getAllUsers } from "./admin.controller";
+import {
+  getAllUsers,
+  changeUserRole,
+} from "./admin.controller";
 
 const router = Router();
 
@@ -9,6 +12,13 @@ router.get(
   requireAuth,
   requireRole("admin"),
   getAllUsers
+);
+
+router.patch(
+  "/users/:id/role",
+  requireAuth,
+  requireRole("admin"),
+  changeUserRole
 );
 
 export default router;
