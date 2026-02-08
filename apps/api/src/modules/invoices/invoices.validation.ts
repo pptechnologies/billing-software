@@ -36,7 +36,7 @@ due_date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Use YYYY-MM-DD").optional(),
 
 export type PatchInvoiceInput = z.infer<typeof patchInvoiceSchema>;
 
-// PUT replace items
+
 export const replaceInvoiceItemsSchema = z
   .object({
     items: z
