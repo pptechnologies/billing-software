@@ -25,8 +25,20 @@ export async function changeUserRole(
     const { userId, role } = req.body;
 
     if (!["admin", "user"].includes(role)) {
-      return next(httpError(400, "InvalidRole", "Invalid role"));
-    }
+  return next(httpError(400, "InvalidRole", "Invalid role"));
+}
+
+const currentUser = req.user!;
+
+if (currentUser.id === userId && role !== "admin") {
+  return next(
+    httpError(
+      409,
+      "InvalidOperation",
+      "You cannot change your own admin role"
+    )
+  );
+}
 
     const updated = await adminRepo.updateUserRole(userId, role);
 

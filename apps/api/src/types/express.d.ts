@@ -3,7 +3,7 @@ import "express";
 export type AuthUser = {
   id: string;
   email: string;
-  role: string;
+  role: "admin" | "user";
 };
 
 declare global {

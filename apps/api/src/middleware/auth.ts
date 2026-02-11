@@ -1,4 +1,3 @@
-// src/middleware/auth.ts
 import type { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { httpError } from "../utils/httpError";
@@ -6,7 +5,7 @@ import { httpError } from "../utils/httpError";
 type AccessTokenPayload = {
   sub: string;
   email: string;
-  role: string;
+  role: "admin" | "user";
   iat: number;
   exp: number;
 };

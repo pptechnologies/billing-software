@@ -33,10 +33,10 @@ async function promoteAdmin() {
     }
 
     await client.query(
-      `UPDATE users SET role = 'admin' WHERE id = $1`,
+      `UPDATE users SET role = 'admin', updated_at = now () WHERE id = $1`,
       [user.id]
     );
-
+    
     console.log("SUCCESS");
     console.log(` ${user.email}`);
     console.log(` Role: ${user.role} → admin`);

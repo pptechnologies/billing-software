@@ -5,7 +5,7 @@ import { authConfig } from "../../config/auth";
 const JWT_SECRET = process.env.JWT_SECRET!;
 const REFRESH_SECRET = process.env.REFRESH_SECRET!;
 
-export function signAccessToken(payload: { sub: string; email: string; role: string }) {
+export function signAccessToken(payload: { sub: string; email: string; role: "admin" | "user" }) {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: authConfig.accessTokenTtlSec });
 }
 
