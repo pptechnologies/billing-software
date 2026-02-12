@@ -10,6 +10,7 @@ import authRoutes from "./modules/auth/auth.routes";
 import clientRoutes from "./modules/clients/client.routes";
 import invoiceRoutes from "./modules/invoices/invoices.route";
 import paymentRoutes from "./modules/payments/payments.routes";
+import adminRoutes from "./modules/admin/admin.routes";
 import reportsRouter from "./modules/reports/reports.routes";
 
 import { pool } from "./config/db";
@@ -47,7 +48,8 @@ app.use("/auth", authRoutes);
 app.use("/clients", requireAuth, clientRoutes);
 app.use("/invoices", requireAuth, invoiceRoutes);
 app.use("/payments", requireAuth, paymentRoutes);
-app.use("/reports", reportsRouter);
+
+app.use("/admin", requireAuth, requireRole("admin"), adminRoutes);
 
 // Reports: locked down by role
 app.use("/reports", requireAuth, requireRole("admin", "finance"), reportsRouter);
