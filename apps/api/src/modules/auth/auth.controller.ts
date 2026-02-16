@@ -56,9 +56,15 @@ export async function signup(req: Request, res: Response, next: NextFunction) {
     setRefreshCookie(res, refreshToken);
 
     return res.status(201).json({
-      user,
-      accessToken,
-    });
+  user: {
+    id: user.id,
+    email: user.email,
+    name: user.name,
+    role: user.role,
+    is_active: user.is_active
+  },
+  accessToken,
+});
   } catch (err) {
     next(err);
   }
@@ -154,7 +160,18 @@ export async function logout(req: Request, res: Response, next: NextFunction) {
 
 export async function me(req: Request, res: Response, next: NextFunction) {
   try {
-    return res.json({ user: req.user });
+    const user = await repo.findUserById(req.user!.id);
+    if (!user) return next(httpError(404, "UserNotFound", "User not found"));
+    
+    return res.json({ 
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+        is_active: user.is_active
+      }
+    });
   } catch (err) {
     next(err);
   }
