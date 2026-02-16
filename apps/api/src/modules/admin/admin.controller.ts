@@ -32,14 +32,12 @@ export async function changeUserRole(
       );
     } 
 
-    // Get current role for audit (MOVED UP)
     const users = await adminRepo.getAllUsers();
     const target = users.find(u => u.id === userId);
     if (!target) {
       return next(httpError(404, "UserNotFound", "User not found"));
     }
 
-    // Prevent removing last admin (NOW target exists)
     if (role === "user" && target.role === "admin") {
       const adminCount = await adminRepo.countAdmins();
       if (adminCount <= 1) {

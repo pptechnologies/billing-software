@@ -51,7 +51,6 @@ app.use("/payments", requireAuth, paymentRoutes);
 
 app.use("/admin", requireAuth, requireRole("admin"), adminRoutes);
 
-// Reports: locked down by role
 app.use("/reports", requireAuth, requireRole("admin", "finance"), reportsRouter);
 
 
