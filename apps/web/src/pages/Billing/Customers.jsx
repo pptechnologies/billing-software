@@ -4,6 +4,11 @@ import toast, { Toaster } from "react-hot-toast";
 
 const API_BASE = process.env.REACT_APP_API_BASE_URL || "http://localhost:4000";
 
+const getAuthHeaders = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+});
+
 export default function Customers() {
   const [clients, setClients] = useState([]);
   const [filteredClients, setFilteredClients] = useState([]);
@@ -24,7 +29,9 @@ export default function Customers() {
   const fetchClients = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/clients`);
+      const res = await fetch(`${API_BASE}/clients`, {
+        headers: getAuthHeaders(),
+      });
       if (!res.ok) throw new Error("Failed to fetch clients");
       const data = await res.json();
       setClients(data || []);
@@ -42,9 +49,7 @@ export default function Customers() {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-
     if (name === "phone") {
-
       const numericValue = value.replace(/\D/g, "").slice(0, 10);
       setFormData((prev) => ({ ...prev, [name]: numericValue }));
     } else {
@@ -69,7 +74,7 @@ export default function Customers() {
 
       const res = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(), 
         body: JSON.stringify(formData),
       });
 
@@ -97,11 +102,14 @@ export default function Customers() {
 
   const handleDelete = async (id) => {
     if (!window.confirm("Are you sure you want to delete this client?")) return;
-    
+
     try {
-      const res = await fetch(`${API_BASE}/clients/${id}`, { method: "DELETE" });
+      const res = await fetch(`${API_BASE}/clients/${id}`, {
+        method: "DELETE",
+        headers: getAuthHeaders(), 
+      });
       if (!res.ok) throw new Error();
-      
+
       setClients((prev) => prev.filter((c) => normalizeId(c) !== id));
       setFilteredClients((prev) => prev.filter((c) => normalizeId(c) !== id));
       toast.success("Client deleted");
@@ -136,7 +144,7 @@ export default function Customers() {
   };
 
   return (
-    <div className="bg-[#f6f7fb] min-h-screen p-6">
+    <div className=" min-h-screen p-6">
       <Toaster position="top-right" reverseOrder={false} />
 
       <div className="flex justify-between items-center mb-6">
@@ -165,13 +173,14 @@ export default function Customers() {
           </div>
 
           <div className="relative">
-            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"/>
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Search Customers"
               className="pl-9 pr-4 py-2 border rounded-lg text-sm"
               value={searchQuery}
-              onChange={handleSearch}/>
+              onChange={handleSearch}
+            />
           </div>
         </div>
 
@@ -200,20 +209,28 @@ export default function Customers() {
                   </tr>
                 ) : (
                   filteredClients.map((client) => (
-                    <tr key={normalizeId(client)} className="border-b last:border-none hover:bg-gray-50">
+                    <tr
+                      key={normalizeId(client)}
+                      className="border-b last:border-none hover:bg-gray-50">
                       <td className="py-3 font-medium">{client.name}</td>
                       <td>{client.email}</td>
                       <td>{client.phone}</td>
                       <td>{client.city}</td>
                       <td>{client.country}</td>
                       <td>
-                        <span className="bg-black text-white px-3 py-1 rounded-full text-xs">Active</span>
+                        <span className="bg-black text-white px-3 py-1 rounded-full text-xs">
+                          Active
+                        </span>
                       </td>
                       <td className="flex gap-3 py-3">
-                        <button className="text-gray-500 hover:text-black" onClick={() => handleEdit(client)}>
+                        <button
+                          className="text-gray-500 hover:text-black"
+                          onClick={() => handleEdit(client)}>
                           <Pencil size={16} />
                         </button>
-                        <button className="text-red-500 hover:text-red-700" onClick={() => handleDelete(normalizeId(client))}>
+                        <button
+                          className="text-red-500 hover:text-red-700"
+                          onClick={() => handleDelete(normalizeId(client))}>
                           <Trash2 size={16} />
                         </button>
                       </td>
@@ -230,30 +247,63 @@ export default function Customers() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-xl w-full max-w-lg p-6">
             <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">{editingClient ? "Edit Client" : "Add Client"}</h3>
+              <h3 className="text-lg font-semibold">
+                {editingClient ? "Edit Client" : "Add Client"}
+              </h3>
               <button onClick={() => setShowModal(false)} className="text-gray-400 hover:text-black">
                 <X size={18} />
               </button>
             </div>
 
             <form className="space-y-4" onSubmit={handleSubmit}>
-              <input name="name" placeholder="Full Name" className="border p-2 rounded w-full" onChange={handleChange} value={formData.name} required/>
-              <input name="email" type="email" placeholder="Email" className="border p-2 rounded w-full" onChange={handleChange} value={formData.email} required/>
-              
-              <input 
-                name="phone" 
+              <input
+                name="name"
+                placeholder="Full Name"
+                className="border p-2 rounded w-full"
+                onChange={handleChange}
+                value={formData.name}
+                required
+              />
+              <input
+                name="email"
+                type="email"
+                placeholder="Email"
+                className="border p-2 rounded w-full"
+                onChange={handleChange}
+                value={formData.email}
+                required
+              />
+              <input
+                name="phone"
                 inputMode="numeric"
-                type="text" 
-                placeholder="Phone (10 digits)" 
-                className="border p-2 rounded w-full" 
-                onChange={handleChange} 
-                value={formData.phone}/>
-              
-              <input name="city" placeholder="City" className="border p-2 rounded w-full" onChange={handleChange} value={formData.city}/>
-              <input name="country" placeholder="Country" className="border p-2 rounded w-full" onChange={handleChange} value={formData.country}/>
+                type="text"
+                placeholder="Phone (10 digits)"
+                className="border p-2 rounded w-full"
+                onChange={handleChange}
+                value={formData.phone}
+              />
+              <input
+                name="city"
+                placeholder="City"
+                className="border p-2 rounded w-full"
+                onChange={handleChange}
+                value={formData.city}
+              />
+              <input
+                name="country"
+                placeholder="Country"
+                className="border p-2 rounded w-full"
+                onChange={handleChange}
+                value={formData.country}
+              />
 
               <div className="flex justify-end gap-3 pt-4">
-                <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded">Cancel</button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 border rounded">
+                  Cancel
+                </button>
                 <button type="submit" className="px-4 py-2 bg-black text-white rounded">
                   {editingClient ? "Update Client" : "Save Client"}
                 </button>

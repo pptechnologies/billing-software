@@ -1,120 +1,149 @@
 import React, { useState } from "react";
-import { useAuth } from "./context/AuthContext";
 import { useNavigate } from "react-router-dom";
-//it is just the login page without any api calls
-const Login = () => {
+import { useAuth } from "./context/AuthContext";
+
+export default function Auth() {
+  const [isLogin, setIsLogin] = useState(true); 
+  const [formData, setFormData] = useState({ name: "", email: "", password: "" });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const [isSignUpMode, setIsSignUpMode] = useState(false);
-  
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+  const handleChange = (e) => {
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setLoading(true);
 
-    if (isSignUpMode) {
+    const endpoint = isLogin ? "/auth/login" : "/auth/signup";
+    
+    try {
+      const response = await fetch(`http://localhost:4000${endpoint}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(isLogin 
+          ? { email: formData.email, password: formData.password } 
+          : formData
+        ),
+      });
 
-      if (password !== confirmPassword) {
-        setError("Passwords do not match!");
-        return;
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.message || "Authentication failed");
       }
+
+      login(data.user, data.accessToken);
+
+      navigate("/billing/overview");
       
-      login({ username, role: "employee" });
-      navigate("/EMP/MyProfile");
-    } else {
-
-      let userRole = "";
-
-      if (username === "admin" && password === "admin123") userRole = "admin";
-      else if (username === "hr" && password === "hr123") userRole = "hr";
-      else if (username === "billing" && password === "billing123") userRole = "billing";
-      else if (username === "employee" && password === "employee1") userRole = "employee";
-      else {
-        setError("Invalid username or password");
-        return;
-      }
-
-      login({ username, role: userRole });
-
-      if (userRole === "admin" || userRole === "billing") navigate("/billing/BillingOverview");
-      else if (userRole === "hr") navigate("/HRMS/HRMSDashboard");
-      else if (userRole === "employee") navigate("/EMP/MyProfile");
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <div className="h-screen flex justify-center items-center bg-gray-100 px-4">
-      <div className="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
+      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md transition-all">
+        <div className="flex justify-center mb-8">
+          <div className="bg-gray-100 p-1 rounded-lg flex w-full">
+            <button
+              onClick={() => { setIsLogin(true); setError(""); }}
+              className={`w-1/2 py-2 text-sm font-bold rounded-md transition-all ${isLogin ? "bg-white shadow text-black" : "text-gray-500"}`}>
+              Login
+            </button>
+            <button
+              onClick={() => { setIsLogin(false); setError(""); }}
+              className={`w-1/2 py-2 text-sm font-bold rounded-md transition-all ${!isLogin ? "bg-white shadow text-black" : "text-gray-500"}`}>
+              Sign Up
+            </button>
+          </div>
+        </div>
+
         <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">
-          {isSignUpMode ? "Create an Account" : "Login"}
+          {isLogin ? "Welcome Back" : "Create Account"}
         </h2>
 
-        {error && <p className="text-red-500 text-sm mb-4 text-center bg-red-50 p-2 rounded">{error}</p>}
+        {error && (
+          <div className="bg-red-50 text-red-600 p-3 rounded-lg mb-4 text-xs font-medium border border-red-100">
+            {error}
+          </div>
+        )}
 
-        <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {!isLogin && (
+            <div>
+              <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Full Name</label>
+              <input
+                type="text"
+                name="name"
+                required
+                placeholder="Enter your full name"
+                className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-black outline-none transition-all"
+                onChange={handleChange}/>
+            </div>
+          )}
 
-          <input
-            type="text"
-            placeholder="Username"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            className="border p-3 rounded-lg focus:ring-2 focus:ring-black outline-none"
-            required/>
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Email Address</label>
+            <input
+              type="email"
+              name="email"
+              required
+              placeholder="Enter Your Email"
+              className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-black outline-none transition-all"
+              onChange={handleChange}/>
+          </div>
 
-          <input
-            type="password"
-            placeholder="Password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="border p-3 rounded-lg focus:ring-2 focus:ring-black outline-none"
-            required />
-
-          {isSignUpMode && (
+          <div>
+            <label className="block text-xs font-bold text-gray-500 uppercase mb-1">Password</label>
             <input
               type="password"
-              placeholder="Confirm Password"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="border p-3 rounded-lg focus:ring-2 focus:ring-black outline-none"
-              required/>
-          )}
+              name="password"
+              required
+              placeholder="Enter Your Password"
+              className="w-full border border-gray-200 p-3 rounded-lg focus:ring-2 focus:ring-black outline-none transition-all"
+              onChange={handleChange} />
+            {!isLogin && (
+               <p className="text-[10px] text-gray-400 mt-2">
+                 * Min. 10 characters with Uppercase, Lowercase, and Numbers.
+               </p>
+            )}
+          </div>
 
           <button
             type="submit"
-            className="bg-black text-white py-3 rounded-lg font-semibold hover:bg-black transition">
-            {isSignUpMode ? "Sign Up" : "Login"}
+            disabled={loading}
+            className="w-full bg-black text-white py-3 rounded-lg font-bold hover:bg-gray-800 transform active:scale-[0.98] transition-all disabled:bg-gray-400 mt-4 shadow-lg">
+            {loading ? (
+              <span className="flex items-center justify-center">
+                <svg className="animate-spin h-5 w-5 mr-3 border-t-2 border-white rounded-full" viewBox="0 0 24 24"></svg>
+                Processing...
+              </span>
+            ) : (
+              isLogin ? "Login" : "Sign Up"
+            )}
           </button>
         </form>
 
         <div className="mt-6 text-center">
-          {isSignUpMode ? (
-            <p className="text-gray-600">
-              Already have an account?{" "}
-              <button
-                onClick={() => { setIsSignUpMode(false); setError(""); }}
-                className="text-black font-bold hover:underline">
-                Login
-              </button>
-            </p>
-          ) : (
-            <p className="text-gray-600">
-              Don't have an account?{" "}
-              <button
-                onClick={() => { setIsSignUpMode(true); setError(""); }}
-                className="text-black font-bold hover:underline">
-                Sign Up
-              </button>
-            </p>
-          )}
+          <p className="text-sm text-gray-500">
+            {isLogin ? "New to BizFlow?" : "Already have an account?"}{" "}
+            <button 
+              onClick={() => setIsLogin(!isLogin)}
+              className="text-black font-bold hover:underline">
+              {isLogin ? "Create account" : "Log in here"}
+            </button>
+          </p>
         </div>
       </div>
     </div>
   );
-};
-
-export default Login;
+}

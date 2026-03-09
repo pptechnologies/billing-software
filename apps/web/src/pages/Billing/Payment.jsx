@@ -5,6 +5,11 @@ import toast, { Toaster } from "react-hot-toast";
 const API_BASE = "http://localhost:4000";
 const MIN_PAYMENT = 0.01;
 
+const getAuthHeaders = () => ({
+  "Content-Type": "application/json",
+  Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
+});
+
 export default function PaymentTracking() {
   const [invoices, setInvoices] = useState([]);
   const [payments, setPayments] = useState([]);
@@ -34,7 +39,9 @@ export default function PaymentTracking() {
     try {
       const allPayments = [];
       for (const inv of invList) {
-        const res = await fetch(`${API_BASE}/invoices/${inv.id}/payments`);
+        const res = await fetch(`${API_BASE}/invoices/${inv.id}/payments`, {
+          headers: getAuthHeaders(),
+        });
         if (!res.ok) continue;
         const json = await res.json();
         const data = json.payments || [];
@@ -44,7 +51,7 @@ export default function PaymentTracking() {
             ...p,
             invoice_id: inv.id,
             invoice_number: inv.invoice_number,
-            client_name: inv.client_name, 
+            client_name: inv.client_name,
             amount: cleanAmount(p.amount),
           });
         });
@@ -75,7 +82,9 @@ export default function PaymentTracking() {
   const fetchInvoices = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${API_BASE}/invoices?page=1&limit=100`);
+      const res = await fetch(`${API_BASE}/invoices?page=1&limit=100`, {
+        headers: getAuthHeaders(),
+      });
       const json = await res.json();
       const invList = json.data || [];
       setInvoices(invList);
@@ -109,7 +118,6 @@ export default function PaymentTracking() {
 
     setSelectedInvoice({ ...inv, paid });
     setRemainingDue(remaining);
-    
     setFormData((prev) => ({ ...prev, invoice_id: String(id), amount: remaining.toFixed(2) }));
   };
 
@@ -118,7 +126,7 @@ export default function PaymentTracking() {
     const amount = cleanAmount(formData.amount);
 
     if (!formData.invoice_id) return toast.error("Select an invoice");
-    
+
     if (amount < MIN_PAYMENT) {
       return toast.error(`Minimum payment is Rs ${MIN_PAYMENT.toFixed(2)}`);
     }
@@ -131,10 +139,10 @@ export default function PaymentTracking() {
     try {
       const res = await fetch(`${API_BASE}/invoices/${formData.invoice_id}/payments`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(), 
         body: JSON.stringify({
           method: formData.method,
-          amount: amount, 
+          amount: amount,
           note: formData.note,
         }),
       });
@@ -170,18 +178,20 @@ export default function PaymentTracking() {
     };
   });
 
-  const filteredData = tableData.filter(i => 
-    i.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const filteredData = tableData.filter(i =>
+    i.invoice_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
     i.client_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
-    <div className="min-h-screen bg-[#F5F5F5] p-8 font-sans">
-
+    <div className="p-6 font-sans">
       <Toaster position="top-right" reverseOrder={false} />
 
-      <div className="flex justify-between mb-8">
-        <h1 className="text-2xl font-semibold">Payment Tracking</h1>
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h2 className="text-2xl font-semibold">Payment Tracking</h2>
+          <p className="text-gray-500 text-sm">Monitor and manage payment transaction</p>
+        </div>
         <button onClick={() => setShowModal(true)} className="bg-black text-white px-5 py-2.5 rounded-lg">
           + Record Payment
         </button>
@@ -197,18 +207,17 @@ export default function PaymentTracking() {
         <div className="flex justify-between items-end mb-4 px-1">
           <h2 className="text-sm font-bold text-gray-800 uppercase tracking-tight">All Records</h2>
           <span className="text-[11px] font-medium text-gray-400">Showing {filteredData.length} entries</span>
-        </div> 
+        </div>
 
         <div className="relative mb-4">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
             <MagnifyingGlassIcon className="h-5 w-5 text-gray-400" />
           </div>
-          
           <input
             className="w-full bg-gray-200 rounded-lg py-2 pl-10 pr-3 outline-none focus:ring-2 focus:ring-black"
             placeholder="Search invoice or client..."
             value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}/>
+            onChange={(e) => setSearchQuery(e.target.value)} />
         </div>
 
         <div className="overflow-x-auto">
@@ -237,7 +246,7 @@ export default function PaymentTracking() {
                     <td className="py-4">Rs {inv.total.toFixed(2)}</td>
                     <td className="py-4">
                       <span className={`font-semibold ${
-                        inv.status === "Paid" ? "text-green-600" : 
+                        inv.status === "Paid" ? "text-green-600" :
                         inv.status === "Partial" ? "text-yellow-600" : "text-red-500"
                       }`}>
                         {inv.status}
@@ -245,7 +254,7 @@ export default function PaymentTracking() {
                     </td>
                     <td className="py-4 text-right">
                       {inv.lastPayment && (
-                        <button 
+                        <button
                           onClick={() => {
                             toast.success("Opening Receipt...");
                             window.open(`${API_BASE}/payments/${inv.lastPayment.id}/receipt/pdf`, "_blank");
@@ -309,7 +318,7 @@ export default function PaymentTracking() {
                     required
                     className="border border-gray-200 p-2.5 rounded-lg w-full outline-none focus:ring-2 focus:ring-black"
                     value={formData.amount}
-                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })}/>
+                    onChange={(e) => setFormData({ ...formData, amount: e.target.value })} />
                 </div>
 
                 <div>
@@ -331,8 +340,9 @@ export default function PaymentTracking() {
                     className="border border-gray-200 p-2.5 rounded-lg w-full outline-none focus:ring-2 focus:ring-black"
                     placeholder="Transaction reference or remarks"
                     value={formData.note}
-                    onChange={(e) => setFormData({ ...formData, note: e.target.value })}/>
+                    onChange={(e) => setFormData({ ...formData, note: e.target.value })} />
                 </div>
+
                 <div className="flex justify-end gap-3 pt-4">
                   <button type="button" onClick={() => setShowModal(false)} className="px-4 py-2 border rounded">Cancel</button>
                   <button type="submit" className="px-4 py-2 bg-black text-white rounded">
