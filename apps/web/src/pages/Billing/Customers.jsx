@@ -179,8 +179,7 @@ export default function Customers() {
               placeholder="Search Customers"
               className="pl-9 pr-4 py-2 border rounded-lg text-sm"
               value={searchQuery}
-              onChange={handleSearch}
-            />
+              onChange={handleSearch}/>
           </div>
         </div>
 
@@ -262,8 +261,7 @@ export default function Customers() {
                 className="border p-2 rounded w-full"
                 onChange={handleChange}
                 value={formData.name}
-                required
-              />
+                required/>
               <input
                 name="email"
                 type="email"
@@ -271,8 +269,7 @@ export default function Customers() {
                 className="border p-2 rounded w-full"
                 onChange={handleChange}
                 value={formData.email}
-                required
-              />
+                required/>
               <input
                 name="phone"
                 inputMode="numeric"
@@ -280,22 +277,19 @@ export default function Customers() {
                 placeholder="Phone (10 digits)"
                 className="border p-2 rounded w-full"
                 onChange={handleChange}
-                value={formData.phone}
-              />
+                value={formData.phone}/>
               <input
                 name="city"
                 placeholder="City"
                 className="border p-2 rounded w-full"
                 onChange={handleChange}
-                value={formData.city}
-              />
+                value={formData.city} />
               <input
                 name="country"
                 placeholder="Country"
                 className="border p-2 rounded w-full"
                 onChange={handleChange}
-                value={formData.country}
-              />
+                value={formData.country}/>
 
               <div className="flex justify-end gap-3 pt-4">
                 <button

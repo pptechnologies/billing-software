@@ -34,7 +34,7 @@ export default function LandingPage() {
         </Link>
       </nav>
 
-      <section className="px-8 md:px-12 pt-20 pb-16 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <section className="px-8 md:px-24 pt-20 pb-16 w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">  
         <div>
           <span className="inline-block px-4 py-1.5 rounded-full bg-gray-100 text-gray-600 text-xs font-semibold mb-6">
             All-in-one Business Management
@@ -67,8 +67,7 @@ export default function LandingPage() {
             <img 
             src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1000" 
             alt="Analytics" 
-            className="rounded-2xl border border-gray-100 shadow-xl" 
-          />
+            className="rounded-2xl border border-gray-100 shadow-xl" />
           </div>
 
           <div className="absolute -bottom-6 -left-0 md:-left-6 bg-black text-white p-4 rounded-xl shadow-xl animate-bounce-slow">
@@ -131,8 +130,7 @@ export default function LandingPage() {
           <img 
             src="https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&q=80&w=1000" 
             alt="Analytics" 
-            className="rounded-2xl border border-gray-100 shadow-xl" 
-          />
+            className="rounded-2xl border border-gray-100 shadow-xl"/>
         </div>
         <div className="order-1 lg:order-2">
           <h3 className="text-4xl font-bold mb-6">Why Choose Biz<span className="text-gray-400">Flow</span>?</h3>
